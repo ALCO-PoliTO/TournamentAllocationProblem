@@ -8,6 +8,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 public class TennisData {
@@ -219,11 +220,11 @@ public class TennisData {
 				Path = "in/" + getTournament_year() + "-" + getDB_Type() + "_" + getTorunament_name() + "/";
 				File f = new File("in/" + getTournament_year() + "-" + getDB_Type() + "_" + getTorunament_name() + "/");
 				f.mkdirs();
-				tourney_ids[0]=getTournament_year()+"-520";
-				tourney_ids[1]=getTournament_year()+"-540";
-				tourney_ids[2]=getTournament_year()+"-560";
-				tourney_ids[3]=getTournament_year()+"-580";
-				for(int i=0;i<4;i++) {
+				tourney_ids[0] = getTournament_year() + "-520";
+				tourney_ids[1] = getTournament_year() + "-540";
+				tourney_ids[2] = getTournament_year() + "-560";
+				tourney_ids[3] = getTournament_year() + "-580";
+				for (int i = 0; i < 4; i++) {
 					Statement current_t = conn.createStatement();
 					ResultSet current_res = current_t
 							.executeQuery("SELECT DISTINCT winner_name,loser_name FROM matches WHERE  tourney_id='"
@@ -710,6 +711,21 @@ public class TennisData {
 	 */
 	public ArrayList<Player> getPlayers() {
 		return players;
+	}
+
+	public int[] getCommon_player_count() {
+		int[] cplayer = new int[4];
+		for (Map.Entry<String, Double> e : common_player.entrySet()) {
+			if (e.getValue() == 1)
+				cplayer[0]++;
+			if (e.getValue() == 2)
+				cplayer[1]++;
+			if (e.getValue() == 3)
+				cplayer[2]++;
+			if (e.getValue() == 4)
+				cplayer[3]++;
+		}
+		return cplayer;
 	}
 
 	public ArrayList<Integer> getUnlucky() {

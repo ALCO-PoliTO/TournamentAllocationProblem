@@ -7,6 +7,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.sql.SQLException;
+import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,11 +48,13 @@ public class DataPlugin {
 
 		String[] ids = { "520" };
 		// String[] ids = {"520","540","560","580"};
-		String[] year = { "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017" };
+		String[] year = {  "2013", "2014", "2015", "2016", "2017" };
 		BufferedWriter writerH = new BufferedWriter(new FileWriter("out/main/ATP.csv"));
 		CSVPrinter csvPrinterH = new CSVPrinter(writerH,
 				CSVFormat.DEFAULT.withHeader("Param", "Value", "Param2", "Previous Y", "Current Y", "Next Y"));
 
+		DecimalFormat df = new DecimalFormat();
+		df.setMaximumFractionDigits(2);
 		for (int y = 0; y < year.length; y++) {
 			for (int i = 0; i < ids.length; i++) {
 				TennisData TData = new TennisData(ids[i], year[y], "ATP",true);
@@ -61,9 +64,15 @@ public class DataPlugin {
 				ArrayList<Player> players = TData.getPlayers();
 				System.out.println("Season of " + year[y]);
 				csvPrinterH.printRecord("Slams " + year[y] + " " + "ATP", "---------", " ", " ", " ", " ");
-				for (int j = 0; j < misfortune_count.length; j++)
+				int tcount = 0;
+				for (int j = 0; j < misfortune_count.length; j++) {
 					csvPrinterH.printRecord("Misfortune of " + j, misfortune_count[j], " ", " ", " ", " ", " ");
-
+					tcount +=misfortune_count[j];
+				}
+				csvPrinterH.printRecord("Total misfortunates", tcount, " ", " ", " ", " ", " ");
+				Double inter = (TData.getCommon_player_count()[3]*100.0)/128.0;
+				csvPrinterH.printRecord("Intersection of players", TData.getCommon_player_count()[3] +" ("+df.format(inter)+")", " ", " ", " ", " ", " ");
+				
 				for (Map.Entry<String, Double> e : misfortune_sorted.entrySet()) {
 					if (e.getValue() > 2) {
 						int current_misfortunate = Integer.parseInt(e.getKey());
@@ -136,16 +145,17 @@ public class DataPlugin {
 	}
 	
 	
-	public static void main_WTA(String[] args)
+	public static void main_wta(String[] args)
 			throws ErrorThrower, SQLException, IOException, ParseException, JSONException {
 
 		String[] ids = { "520" };
 		// String[] ids = {"520","540","560","580"};
-		String[] year = { "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017" };
+		String[] year = {  "2013", "2014", "2015", "2016", "2017" };
 		BufferedWriter writerH = new BufferedWriter(new FileWriter("out/main/WTA.csv"));
 		CSVPrinter csvPrinterH = new CSVPrinter(writerH,
 				CSVFormat.DEFAULT.withHeader("Param", "Value", "Param2", "Previous Y", "Current Y", "Next Y"));
-
+		DecimalFormat df = new DecimalFormat();
+		df.setMaximumFractionDigits(2);
 		for (int y = 0; y < year.length; y++) {
 			for (int i = 0; i < ids.length; i++) {
 				TennisData TData = new TennisData(ids[i], year[y], "WTA", true);
@@ -155,9 +165,15 @@ public class DataPlugin {
 				ArrayList<Player> players = TData.getPlayers();
 				System.out.println("Season of " + year[y]);
 				csvPrinterH.printRecord("Slams " + year[y] + " " + "WTA", "---------", " ", " ", " ", " ");
-				for (int j = 0; j < misfortune_count.length; j++)
+				int tcount = 0;
+				for (int j = 0; j < misfortune_count.length; j++) {
 					csvPrinterH.printRecord("Misfortune of " + j, misfortune_count[j], " ", " ", " ", " ", " ");
-
+					tcount +=misfortune_count[j];
+				}
+				csvPrinterH.printRecord("Total misfortunates", tcount, " ", " ", " ", " ", " ");
+				Double inter = (TData.getCommon_player_count()[3]*100.0)/128.0;
+				csvPrinterH.printRecord("Intersection of players", TData.getCommon_player_count()[3] +" ("+df.format(inter)+")", " ", " ", " ", " ", " ");
+			
 				for (Map.Entry<String, Double> e : misfortune_sorted.entrySet()) {
 					if (e.getValue() > 2) {
 						int current_misfortunate = Integer.parseInt(e.getKey());

@@ -80,7 +80,8 @@ public class Main {
 	public static void main(String[] args) throws ErrorThrower, SQLException, IOException, ParseException {
 
 		long Main = System.nanoTime();
-		String[] years = { "2014", "2015", "2016", "2017" };
+		//String[] years = { "2014", "2015", "2016", "2017" };
+		String[] years = {"2017" };
 		String[] ids = { "580", "520", "540", "560" };
 		Calendar now = Calendar.getInstance();
 		String unique = now.get(Calendar.HOUR_OF_DAY) + "_" + now.get(Calendar.MINUTE);
@@ -778,15 +779,18 @@ public class Main {
 						Double AVG_TOURNEY_cplex_cindex = 0.0;
 						Double AVG_TOURNEY_cplex_nconf = 0.0;
 						Double AVG_nconf_cplex = 0.0;
+						Double AVG_unlucky_cplex = 0.0;
 
 						Double AVG_cindex_greedy = 0.0;
 						Double AVG_TOURNEY_greedy_cindex = 0.0;
 						Double AVG_TOURNEY_greedy_nconf = 0.0;
 						Double AVG_nconf_greedy = 0.0;
+						Double AVG_unlucky_greedy = 0.0;
 
 						// Indexes for last simulation
 						Double cindex_original = 0.0;
 						int nconf_original = 0;
+						int nconf_unlucky_original = 0;
 						Double TOURNEY_cindex_original = 0.0;
 						int TOURNEY_nconf_original = 0;
 						Double cindex_cplex = 0.0;
@@ -916,9 +920,21 @@ public class Main {
 								if (h[CPLEX_FirstDraw[i * 2]][CPLEX_FirstDraw[i * 2 + 1]] > 0)
 									AVG_nconf_cplex++;
 
+								if ((players.get(CPLEX_FirstDraw[i * 2]).getUnlucky()
+										&& players.get(CPLEX_FirstDraw[i * 2 + 1]).getHas_seed())
+										|| (players.get(CPLEX_FirstDraw[i * 2 + 1]).getUnlucky()
+												&& players.get(CPLEX_FirstDraw[i * 2]).getHas_seed()))
+									AVG_unlucky_cplex++;
+
 								AVG_cindex_greedy += h[GREEDY_FirstDraw[i * 2]][GREEDY_FirstDraw[i * 2 + 1]];
 								if (h[GREEDY_FirstDraw[i * 2]][GREEDY_FirstDraw[i * 2 + 1]] > 0)
 									AVG_nconf_greedy++;
+
+								if ((players.get(GREEDY_FirstDraw[i * 2]).getUnlucky()
+										&& players.get(GREEDY_FirstDraw[i * 2 + 1]).getHas_seed())
+										|| (players.get(GREEDY_FirstDraw[i * 2 + 1]).getUnlucky()
+												&& players.get(GREEDY_FirstDraw[i * 2]).getHas_seed()))
+									AVG_unlucky_greedy++;
 							}
 							if (z == (s - 1)) {
 								if (Verbose) {
@@ -998,6 +1014,7 @@ public class Main {
 								if (Verbose)
 									System.out.println(
 											"Computing conflicts measure and number for last generated 1st rounds.");
+								nconf_unlucky_original = 0;
 								for (int i = 0; i < (n / 2); i++) {
 
 									// Add conflict 1st round to CPLEX_FirstDraw from CPLEX
@@ -1009,6 +1026,11 @@ public class Main {
 									if (h[i * 2][i * 2 + 1] > 0)
 										nconf_original++;
 									cindex_original += h[i * 2][i * 2 + 1];
+
+									if ((players.get(i * 2).getUnlucky() && players.get(i * 2 + 1).getHas_seed())
+											|| (players.get(i * 2 + 1).getUnlucky()
+													&& players.get(i * 2).getHas_seed()))
+										nconf_unlucky_original++;
 
 									// Add conflict 1st round to greedy's draws
 									if (h[GREEDY_FirstDraw[i * 2]][GREEDY_FirstDraw[i * 2 + 1]] > 0)
@@ -1156,6 +1178,8 @@ public class Main {
 						AVG_nconf_cplex = AVG_nconf_cplex / s;
 						AVG_cindex_greedy = AVG_cindex_greedy / s;
 						AVG_nconf_greedy = AVG_nconf_greedy / s;
+						AVG_unlucky_greedy = AVG_unlucky_greedy / s;
+						AVG_unlucky_cplex = AVG_unlucky_cplex / s;
 
 						AVG_TOURNEY_greedy_nconf = AVG_TOURNEY_greedy_nconf / s;
 						AVG_TOURNEY_greedy_cindex = AVG_TOURNEY_greedy_cindex / s;
@@ -1270,48 +1294,56 @@ public class Main {
 						BufferedWriter writer = new BufferedWriter(new FileWriter(Path + "Results.csv"));
 
 						CSVPrinter csvPrinter = new CSVPrinter(writer,
-								CSVFormat.DEFAULT.withHeader("", "ACT", "CPLEX", "GREEDY"));
-						csvPrinter.printRecord("n=" + n + " m=v=" + v + " k=" + k, "", "", "");
-						csvPrinter.printRecord("LB seeds", LB, LB, LB);
+								CSVFormat.DEFAULT.withHeader("Name", "REAL", "CPLEX", "GREEDY"));
+						// csvPrinter.printRecord("n=" + n + " m=v=" + v + " k=" + k, "", "", "");
 						csvPrinter.printRecord("Time", "-", df.format(CPLEX_time) + "s",
 								df.format(GR_time_first) + "s (" + df.format(GR_time) + "s)");
-						csvPrinter.printRecord("    CPLEX O.F. with TL=GreedyTime", "--", CPLEX_sameTime,
-								objective_greedy);
-						csvPrinter.printRecord("O.F.", objective_actual,
+						csvPrinter.printRecord("LB with seeds", LB, LB, LB);
+						csvPrinter.printRecord("O.F", objective_actual,
 								cplex.getObjValue() + " (" + OF_improv_cplex + "%)",
 								objective_greedy + " (" + OF_improv_greedy + "%)");
-						csvPrinter.printRecord("Greedy improvement with swaps", "-", "-", -delta_Sum_gr);
-						csvPrinter.printRecord("Solution status", "-", cplex.getStatus(), "Feasible");
-						csvPrinter.printRecord("Average indexes | s=" + s, "", "", "");
-						csvPrinter.printRecord("Number of conflicts in the 1st round", nconf_original,
+						String GreedyStatus = "Feasible";
+						if (cplex.getStatus().equals("Optimal") && cplex.getObjValue() == objective_greedy)
+							GreedyStatus = "Optimal";
+						csvPrinter.printRecord("Solution status", "-", cplex.getStatus(), GreedyStatus);
+						csvPrinter.printRecord("    O.F. with TL=GreedyTime", "-", CPLEX_sameTime,
+								objective_greedy +"(-"+delta_Sum_gr+" swaps)");
+						csvPrinter.printRecord("Avg. Indexes | " + s + " simulations", "", "", "");
+						csvPrinter.printRecord("    Unlucky pairings", nconf_unlucky_original,
+								df.format(AVG_unlucky_cplex), df.format(AVG_unlucky_greedy));
+						csvPrinter.printRecord("    Positive costs (1st round)", nconf_original,
 								df.format(AVG_nconf_cplex), df.format(AVG_nconf_greedy));
-						csvPrinter.printRecord("Measure of conflicts in the 1st round", cindex_original,
+						csvPrinter.printRecord("    Sum of costs (1st round)", cindex_original,
 								df.format(AVG_cindex_cplex) + " (" + AVG_cindex_improv_cplex + "%)",
 								df.format(AVG_cindex_greedy) + " (" + AVG_cindex_improv_greedy + "%)");
-						csvPrinter.printRecord("Number of conflicts in the tournament", TOURNEY_nconf_original,
+						csvPrinter.printRecord("    Positive costs (tournament)", TOURNEY_nconf_original,
 								df.format(AVG_TOURNEY_cplex_nconf), df.format(AVG_TOURNEY_greedy_nconf));
-						csvPrinter.printRecord("Measure of conflicts in the tournament", TOURNEY_cindex_original,
+						csvPrinter.printRecord("    Sum of costs (tournament)", TOURNEY_cindex_original,
 								df.format(AVG_TOURNEY_cplex_cindex) + " (" + AVG_TOURNEY_cplex_cindex_improv + "%)",
 								df.format(AVG_TOURNEY_greedy_cindex) + " (" + AVG_TOURNEY_greedy_cindex_improv + "%)");
-						csvPrinter.printRecord("Misfortunate info", "", "", "");
-						csvPrinter.printRecord("Misfortunate intersection", misfortune_map.size(),
+						csvPrinter.printRecord("Unlucky information", "", "", "");
+						csvPrinter.printRecord("    Played previous 4 Slams", misfortune_map.size(),
 								misfortune_map.size(), misfortune_map.size());
 						for (int i = 0; i < misfortune_count.length; i++)
-							csvPrinter.printRecord("Misfortune of " + i, misfortune_count[i], misfortune_count[i],
-									misfortune_count[i]);
+							csvPrinter.printRecord("     Paired with a seed " + i + " times", misfortune_count[i],
+									misfortune_count[i], misfortune_count[i]);
 
-						csvPrinter.printRecord("Last simulation indexes", "", "", "");
-						csvPrinter.printRecord("Number of conflicts in the 1st round", nconf_original, nconf_cplex,
-								nconf_greedy);
-						csvPrinter.printRecord("Measure of conflicts in the 1st round", cindex_original,
-								df.format(cindex_cplex) + " (" + cindex_improv_cplex + "%)",
-								df.format(cindex_greedy) + " (" + cindex_improv_greedy + "%)");
-
-						csvPrinter.printRecord("Number of conflicts in the tournament", TOURNEY_nconf_original,
-								df.format(TOURNEY_nconf_cplex), df.format(TOURNEY_nconf_greedy));
-						csvPrinter.printRecord("Measure of conflicts in the tournament", TOURNEY_cindex_original,
-								df.format(TOURNEY_cindex_cplex) + " (" + TOURNEY_cindex_cplex_improv + "%)",
-								df.format(TOURNEY_cindex_greedy) + " (" + TOURNEY_cindex_greedy_improv + "%)");
+						/*
+						 * csvPrinter.printRecord("Last simulation indexes", "", "", "");
+						 * csvPrinter.printRecord("Number of conflicts in the 1st round",
+						 * nconf_original, nconf_cplex, nconf_greedy);
+						 * csvPrinter.printRecord("Measure of conflicts in the 1st round",
+						 * cindex_original, df.format(cindex_cplex) + " (" + cindex_improv_cplex + "%)",
+						 * df.format(cindex_greedy) + " (" + cindex_improv_greedy + "%)");
+						 * 
+						 * csvPrinter.printRecord("Number of conflicts in the tournament",
+						 * TOURNEY_nconf_original, df.format(TOURNEY_nconf_cplex),
+						 * df.format(TOURNEY_nconf_greedy));
+						 * csvPrinter.printRecord("Measure of conflicts in the tournament",
+						 * TOURNEY_cindex_original, df.format(TOURNEY_cindex_cplex) + " (" +
+						 * TOURNEY_cindex_cplex_improv + "%)", df.format(TOURNEY_cindex_greedy) + " (" +
+						 * TOURNEY_cindex_greedy_improv + "%)");
+						 */
 
 						csvPrinter.flush();
 						csvPrinter.close();
