@@ -1,4 +1,6 @@
 # The Tournament Allocation Problem
+Pre-print available [on arXiv](https://arxiv.org/abs/1901.05387).
+
 This repository is maintained by ALCO@Politecnico di Torino.
 
 This software uses [IBM CPLEX](https://developer.ibm.com/academic/). Scholars are entitled to obtain a free license via the IBM Academic Initiative.
