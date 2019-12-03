@@ -26,7 +26,7 @@ import org.apache.commons.csv.CSVPrinter;
 
 public class Main {
 
-	private static Double eta = 0.8;
+	private static Double eta = 1.0;
 	private static Boolean LocalSearch = false;
 
 	private static int k = 4;
@@ -75,9 +75,9 @@ public class Main {
 
 		long Main = System.nanoTime();
 		String[] years = { "2017" };
-		String[] ids = {"580","520","540","560" };
-		//String[] years = { "2017" };
-		String[] Type = { "ATP","WTA" };
+		String[] ids = { "580", "520", "540", "560" };
+		// String[] years = { "2017" };
+		String[] Type = { "WTA", "ATP" };
 		Calendar now = Calendar.getInstance();
 		String unique = now.get(Calendar.HOUR_OF_DAY) + "_" + now.get(Calendar.MINUTE);
 		String mainPath = "out/" + unique + "/";
@@ -86,8 +86,9 @@ public class Main {
 		BufferedWriter writerMain = new BufferedWriter(new FileWriter(mainPath + "Results.csv"));
 		@SuppressWarnings("resource")
 		CSVPrinter csvPrinterMain = new CSVPrinter(writerMain,
-				CSVFormat.DEFAULT.withHeader("", "Time", "O.F.", "Status", "O.F. (HeuTime)", "Unlucky Pairings",
-						"Positive costs (1R)", "Costs (1R)", "(HEU) Attempted Swaps [Successful]", "(HEU) Averege Delta Swap", "(HEU) Worst Greedy", "Positive costs (T)", "Costs (T)"));
+				CSVFormat.DEFAULT.withHeader("", "Time", "O.F.", "u-pairings","(u+h)-pairings","Status", "O.F. (HeuTime)", "Unlucky Pairings",
+						"Positive costs (1R)", "Costs (1R)", "(HEU) Attempted Swaps [Successful]",
+						"(HEU) Averege Delta Swap", "(HEU) Worst Greedy", "Positive costs (T)", "Costs (T)"));
 
 		FileOutputStream fout = new FileOutputStream(mainPath + "Instance.txt");
 		MultiOutputStream multiOut = new MultiOutputStream(System.out, fout);
@@ -144,6 +145,8 @@ public class Main {
 
 					int ACTUAL_FirstRound[][] = new int[n][k]; // |ACTUAL| Cluster in actual tournament
 					int ACTUAL_Rounds[][] = TData.getRealTournament(); // |ACTUAL| Tournament representation
+					int ACTUAL_FirstDraw[] = new int[n];
+					int ACTUAL_FirstDrawRound[][] = new int[n][k];
 
 					int CPLEX_FirstDraw[] = new int[n]; // |CPLEX| Draw for first round
 					int CPLEX_Draws[][] = new int[n][rounds]; // |CPLEX| Simulations for other rounds
@@ -371,7 +374,8 @@ public class Main {
 						Double number_iter_ls = 0.0;
 						Double average_successful_ls = 0.0;
 						Double average_delta_ls = 0.0;
-						int iter =0;
+						Double AVG_objective_greedy =0.0;
+						int iter = 0;
 						for (int a = 0; a < s && LocalLimit; a++) {
 							// Fill -1 values with zero.
 							for (int i = 0; i < n; i++)
@@ -418,7 +422,7 @@ public class Main {
 
 										}
 									}
-									//if (Math.random() > eta && itcount < (n - m - 1) && a == 0) {
+									// if (Math.random() > eta && itcount < (n - m - 1) && a == 0) {
 									if (Math.random() > eta && itcount < (n - m - 1)) {
 										random_cl = min_cluster;
 										while (random_cl == min_cluster || unlucky_in_cluster[random_cl] <= 0
@@ -460,7 +464,7 @@ public class Main {
 
 										}
 									}
-									//if (Math.random() > eta && itcount < (n - m - 1) && a == 0) {
+									// if (Math.random() > eta && itcount < (n - m - 1) && a == 0) {
 									if (Math.random() > eta && itcount < (n - m - 1)) {
 										random_cl = min_cluster;
 										while (random_cl == min_cluster || free_in_cluster[random_cl] <= 0
@@ -497,7 +501,7 @@ public class Main {
 								}
 							}
 
-							Double TL_greedy = 0.75;
+							Double TL_greedy = 0.73;
 							float greedy_start = System.nanoTime();
 							greedy_time = 0;
 							int j_current_Alpha = -1, j_current_Beta = -1, index_Alpha = -1, index_Beta = -1,
@@ -532,7 +536,7 @@ public class Main {
 									else
 										prop = true;
 								}
-								
+
 								// Once players are selected, try to swap them
 								// In Beta's cluster
 								for (int ii = 0; ii < n; ii++) {
@@ -556,7 +560,7 @@ public class Main {
 								number_iter_ls++;
 								if ((delta_First + delta_Second) < 0) {
 									average_successful_ls++;
-									average_delta_ls +=delta_Sum;
+									average_delta_ls += delta_Sum;
 									delta_Sum += delta_First + delta_Second;
 									GreedyCurrent[Alpha][j_current_Alpha] = 0;
 									GreedyCurrent[Alpha][j_current_Beta] = 1;
@@ -599,12 +603,14 @@ public class Main {
 								GR_time_first = GR_time;
 							}
 							if (!LocalSearch) {
-								if (a == 1) {
+								if (a >= s) {
+									System.out.println("Limit reached!");
 									LocalLimit = false;
 								}
 							} else
 								System.out.println("Generating more Greedy solutions...");
 
+							AVG_objective_greedy+=objective_greedy;
 							if (best_obj_greedy > objective_greedy) {
 								for (int i = 0; i < n; i++)
 									for (int j = 0; j < k; j++)
@@ -612,13 +618,15 @@ public class Main {
 								best_obj_greedy = objective_greedy;
 							}
 							if (worst_obj_greedy < objective_greedy)
-								worst_obj_greedy= objective_greedy;
+								worst_obj_greedy = objective_greedy;
 
 							iter++;
 						}
-						number_iter_ls = number_iter_ls/iter;
-						average_delta_ls = average_delta_ls/(iter*average_successful_ls);
-						average_successful_ls = average_successful_ls/iter;
+						number_iter_ls = number_iter_ls / iter;
+						AVG_objective_greedy = AVG_objective_greedy/iter;
+						average_delta_ls = average_delta_ls / (iter * average_successful_ls);
+						average_successful_ls = average_successful_ls / iter;
+						System.out.println("Avg greedy:"+AVG_objective_greedy);
 						System.out.println("Best Greedy with OF of:" + best_obj_greedy);
 						for (int j = 0; j < k; j++) {
 							int count = 0;
@@ -703,7 +711,6 @@ public class Main {
 							}
 						}
 						cplex.addMinimize(objective);
-
 						System.out.println("\tImporting greedy solution as the starting one.");
 						IloIntVar[] c_startVar = new IloIntVar[n * k];
 						double[] c_startVal = new double[n * k];
@@ -750,6 +757,7 @@ public class Main {
 						// Solver
 						boolean solver = false;
 						float CPLEX_start = System.nanoTime();
+						cplex.setParam(IloCplex.Param.TimeLimit, 0.1);
 						solver = cplex.solve();
 
 						// Solve
@@ -800,12 +808,35 @@ public class Main {
 							Double AVG_TOURNEY_cplex_nconf = 0.0;
 							Double AVG_nconf_cplex = 0.0;
 							Double AVG_unlucky_cplex = 0.0;
+							Double BEST_unlucky_cplex = 1000.0;
+							Double WORST_unlucky_cplex = 0.0;
+							Double BEST_nconf_cplex = 1000.0;
+							Double WORST_nconf_cplex = 0.0;
 
 							Double AVG_cindex_greedy = 0.0;
 							Double AVG_TOURNEY_greedy_cindex = 0.0;
 							Double AVG_TOURNEY_greedy_nconf = 0.0;
 							Double AVG_nconf_greedy = 0.0;
 							Double AVG_unlucky_greedy = 0.0;
+							Double WORST_objective_greedy = 0.00;
+							Double BEST_objective_greedy = 10e9;
+							Double BEST_unlucky_greedy = 1000.0;
+							Double WORST_unlucky_greedy = 0.0;
+							Double BEST_nconf_greedy = 1000.0;
+							Double WORST_nconf_greedy = 0.0;
+
+							Double AVG_cindex_ACTUAL = 0.0;
+							Double AVG_TOURNEY_ACTUAL_cindex = 0.0;
+							Double AVG_TOURNEY_ACTUAL_nconf = 0.0;
+							Double AVG_nconf_ACTUAL = 0.0;
+							Double AVG_unlucky_ACTUAL = 0.0;
+							Double AVG_objective_actual = 0.0;
+							Double WORST_objective_actual = 0.00;
+							Double BEST_objective_actual = 10e9;
+							Double BEST_unlucky_actual = 1000.0;
+							Double WORST_unlucky_actual = 0.0;
+							Double BEST_nconf_actual = 1000.0;
+							Double WORST_nconf_actual = 0.0;
 
 							// Indexes for last simulation
 							Double cindex_original = 0.0;
@@ -821,6 +852,11 @@ public class Main {
 							int nconf_greedy = 0;
 							Double TOURNEY_cindex_greedy = 0.0;
 							int TOURNEY_nconf_greedy = 0;
+							Double cindex_ACTUAL = 0.0;
+							int nconf_ACTUAL = 0;
+							Double TOURNEY_cindex_ACTUAL = 0.0;
+							int TOURNEY_nconf_ACTUAL = 0;
+							int nconf_unlucky_ACTUAL = 0;
 							String[] CPLEX_Winners = new String[s];
 							String[] GREEDY_Winners = new String[s];
 
@@ -832,9 +868,11 @@ public class Main {
 
 							for (int z = 0; z < s; z++) {
 
+								ArrayList<Integer> bucket_ACTUAL = new ArrayList<Integer>();
 								for (int i = 0; i < n; i++) {
 									CPLEX_FirstDraw[i] = -1;
 									GREEDY_FirstDraw[i] = -1;
+									ACTUAL_FirstDraw[i] = -1;
 								}
 
 								ArrayList<Integer>[] bucket = (ArrayList<Integer>[]) new ArrayList[k];
@@ -848,6 +886,11 @@ public class Main {
 									bucket_unlucky[j] = new ArrayList<Integer>();
 									bucket_greedy_unlucky[j] = new ArrayList<Integer>();
 									for (int i = 0; i < n; i++) {
+										ACTUAL_FirstDrawRound[i][j]=0;
+										if (players.get(i).getSeed() > 0)
+											ACTUAL_FirstDraw[players.get(i).getSeedposition() - 1] = i;
+										else
+											bucket_ACTUAL.add(i);
 										if (isOne(cplex.getValue(x[i][j]))) {
 											if (players.get(i).getSeed() > 0)
 												CPLEX_FirstDraw[players.get(i).getSeedposition() - 1] = i;
@@ -874,8 +917,8 @@ public class Main {
 								int randomIndex = -1, randomIndex_c = -1;
 								int against = -1;
 
-								for (int j = 0; j < k; j++) {
-									for (int i = 0; i < u; i++) {
+								for (int i = 0; i < u; i++) {
+									for (int j = 0; j < k; j++) {
 										randomIndex = -1;
 										if (CPLEX_FirstDraw[j * u + i] < 0) {
 											if (bucket[j].size() > 0) {
@@ -914,8 +957,8 @@ public class Main {
 									bucket_greedy[j].addAll(bucket_greedy_unlucky[j]);
 								}
 
-								for (int j = 0; j < k; j++) {
-									for (int i = 0; i < u; i++) {
+								for (int i = 0; i < u; i++) {
+									for (int j = 0; j < k; j++) {
 										randomIndex = -1;
 
 										if (CPLEX_FirstDraw[j * u + i] < 0) {
@@ -935,28 +978,119 @@ public class Main {
 										}
 									}
 								}
+
+								for (int i = 0; i < n; i++) {
+									if (ACTUAL_FirstDraw[i] < 0) {
+										if (bucket_ACTUAL.size() > 0) {
+											randomIndex_c = randomGenerator.nextInt(bucket_ACTUAL.size());
+											ACTUAL_FirstDraw[i] = bucket_ACTUAL.get(randomIndex_c);
+											bucket_ACTUAL.remove(randomIndex_c);
+										}
+									}
+								}
+								
+								
+								Double nconf_cplex_now = 0.00;
+								Double unlucky_cplex_now = 0.00;
+								Double nconf_greedy_now = 0.00;
+								Double unlucky_greedy_now = 0.00;
+								Double nconf_actual_now = 0.00;
+								Double unlucky_actual_now = 0.00;
 								for (int i = 0; i < (n / 2); i++) {
 
 									AVG_cindex_cplex += h[CPLEX_FirstDraw[i * 2]][CPLEX_FirstDraw[i * 2 + 1]];
 									if (h[CPLEX_FirstDraw[i * 2]][CPLEX_FirstDraw[i * 2 + 1]] > 0)
-										AVG_nconf_cplex++;
+										nconf_cplex_now++;
 
 									if ((players.get(CPLEX_FirstDraw[i * 2]).getUnlucky()
 											&& players.get(CPLEX_FirstDraw[i * 2 + 1]).getHas_seed())
 											|| (players.get(CPLEX_FirstDraw[i * 2 + 1]).getUnlucky()
 													&& players.get(CPLEX_FirstDraw[i * 2]).getHas_seed()))
-										AVG_unlucky_cplex++;
+										unlucky_cplex_now++;
 
 									AVG_cindex_greedy += h[GREEDY_FirstDraw[i * 2]][GREEDY_FirstDraw[i * 2 + 1]];
 									if (h[GREEDY_FirstDraw[i * 2]][GREEDY_FirstDraw[i * 2 + 1]] > 0)
-										AVG_nconf_greedy++;
+										nconf_greedy_now++;
 
 									if ((players.get(GREEDY_FirstDraw[i * 2]).getUnlucky()
 											&& players.get(GREEDY_FirstDraw[i * 2 + 1]).getHas_seed())
 											|| (players.get(GREEDY_FirstDraw[i * 2 + 1]).getUnlucky()
 													&& players.get(GREEDY_FirstDraw[i * 2]).getHas_seed()))
-										AVG_unlucky_greedy++;
+										unlucky_greedy_now++;
+
+
+									AVG_cindex_ACTUAL += h[ACTUAL_FirstDraw[i * 2]][ACTUAL_FirstDraw[i * 2 + 1]];
+									if (h[ACTUAL_FirstDraw[i * 2]][ACTUAL_FirstDraw[i * 2 + 1]] > 0)
+										nconf_actual_now++;
+
+									if ((players.get(ACTUAL_FirstDraw[i * 2]).getUnlucky()
+											&& players.get(ACTUAL_FirstDraw[i * 2 + 1]).getHas_seed())
+											|| (players.get(ACTUAL_FirstDraw[i * 2 + 1]).getUnlucky()
+													&& players.get(ACTUAL_FirstDraw[i * 2]).getHas_seed()))
+										unlucky_actual_now++;
+
 								}
+
+								AVG_nconf_cplex+=nconf_cplex_now;
+								AVG_unlucky_cplex+=unlucky_cplex_now;
+								AVG_nconf_greedy+=nconf_greedy_now;
+								AVG_unlucky_greedy+=unlucky_greedy_now;
+								AVG_nconf_ACTUAL+=nconf_actual_now;
+								AVG_unlucky_ACTUAL+=unlucky_actual_now;
+								
+								nconf_actual_now+=unlucky_actual_now;
+								nconf_cplex_now+=unlucky_cplex_now;
+								nconf_greedy_now+=unlucky_greedy_now;
+								
+								if (BEST_unlucky_cplex > unlucky_cplex_now)
+									BEST_unlucky_cplex=unlucky_cplex_now;
+								if (WORST_unlucky_cplex < unlucky_cplex_now)
+									WORST_unlucky_cplex=unlucky_cplex_now;
+								if (BEST_nconf_cplex > nconf_cplex_now)
+									BEST_nconf_cplex=nconf_cplex_now;
+								if (WORST_nconf_cplex < nconf_cplex_now)
+									WORST_nconf_cplex=nconf_cplex_now;
+								
+								if (BEST_unlucky_greedy > unlucky_greedy_now)
+									BEST_unlucky_greedy=unlucky_greedy_now;
+								if (WORST_unlucky_greedy < unlucky_greedy_now)
+									WORST_unlucky_greedy=unlucky_greedy_now;
+								if (BEST_nconf_greedy > nconf_greedy_now)
+									BEST_nconf_greedy=nconf_greedy_now;
+								if (WORST_nconf_greedy < nconf_greedy_now)
+									WORST_nconf_greedy=nconf_greedy_now;
+								
+								if (BEST_unlucky_actual > unlucky_actual_now)
+									BEST_unlucky_actual=unlucky_actual_now;
+								if (WORST_unlucky_actual < unlucky_actual_now)
+									WORST_unlucky_actual=unlucky_actual_now;
+								if (BEST_nconf_actual > nconf_actual_now)
+									BEST_nconf_actual=nconf_actual_now;
+								if (WORST_nconf_actual < nconf_actual_now)
+									WORST_nconf_actual=nconf_actual_now;
+
+								for (int i = 0; i < players.size(); i++) {
+									int cluster = i / u;
+									ACTUAL_FirstDrawRound[ACTUAL_FirstDraw[i]][cluster] = 1;
+								}
+
+								Double AVG_current_obj = 0.0;
+								for (int j = 0; j < k; j++) {
+									for (int alfa = 0; alfa < n; alfa++) {
+										for (int beta = 0; beta < n; beta++) {
+											if (alfa < beta) {
+												AVG_current_obj += ACTUAL_FirstDrawRound[alfa][j]
+														* ACTUAL_FirstDrawRound[beta][j] * h[alfa][beta];
+											}
+										}
+									}
+								}
+								AVG_objective_actual += AVG_current_obj;
+								if (AVG_current_obj > WORST_objective_actual)
+									WORST_objective_actual = AVG_current_obj;
+								if (AVG_current_obj < BEST_objective_actual)
+									BEST_objective_actual = AVG_current_obj;
+
 								if (z == (s - 1)) {
 									if (Verbose) {
 										System.out.println("");
@@ -1048,15 +1182,27 @@ public class Main {
 											nconf_original++;
 										cindex_original += h[i * 2][i * 2 + 1];
 
-										if ((players.get(i * 2).getUnlucky() && players.get(i * 2 + 1).getHas_seed())
-												|| (players.get(i * 2 + 1).getUnlucky()
-														&& players.get(i * 2).getHas_seed()))
-											nconf_unlucky_original++;
-
 										// Add conflict 1st round to greedy's draws
 										if (h[GREEDY_FirstDraw[i * 2]][GREEDY_FirstDraw[i * 2 + 1]] > 0)
 											nconf_greedy++;
 										cindex_greedy += h[GREEDY_FirstDraw[i * 2]][GREEDY_FirstDraw[i * 2 + 1]];
+
+										// Add conflict 1st round to ACTUAL's draws
+										if (h[ACTUAL_FirstDraw[i * 2]][ACTUAL_FirstDraw[i * 2 + 1]] > 0)
+											nconf_ACTUAL++;
+										cindex_ACTUAL += h[ACTUAL_FirstDraw[i * 2]][ACTUAL_FirstDraw[i * 2 + 1]];
+
+										if ((players.get(i * 2).getUnlucky() && players.get(i * 2 + 1).getHas_seed())
+												|| (players.get(i * 2 + 1).getUnlucky()
+														&& players.get(i * 2).getHas_seed()))
+											nconf_unlucky_ACTUAL++;
+
+										if ((players.get(ACTUAL_FirstDraw[i * 2]).getUnlucky()
+												&& players.get(ACTUAL_FirstDraw[i * 2 + 1]).getHas_seed())
+												|| (players.get(ACTUAL_FirstDraw[i * 2 + 1]).getUnlucky()
+														&& players.get(ACTUAL_FirstDraw[i * 2]).getHas_seed()))
+											nconf_unlucky_ACTUAL++;
+
 										if (Verbose) {
 											System.out.println("\t|CPLEX|\tMatch between "
 													+ players.get(CPLEX_FirstDraw[i * 2]).getName() + " and "
@@ -1200,10 +1346,14 @@ public class Main {
 							}
 							AVG_cindex_cplex = AVG_cindex_cplex / s;
 							AVG_nconf_cplex = AVG_nconf_cplex / s;
+							AVG_unlucky_cplex = AVG_unlucky_cplex / s;
 							AVG_cindex_greedy = AVG_cindex_greedy / s;
 							AVG_nconf_greedy = AVG_nconf_greedy / s;
 							AVG_unlucky_greedy = AVG_unlucky_greedy / s;
-							AVG_unlucky_cplex = AVG_unlucky_cplex / s;
+							AVG_cindex_ACTUAL = AVG_cindex_ACTUAL / s;
+							AVG_nconf_ACTUAL = AVG_nconf_ACTUAL / s;
+							AVG_unlucky_ACTUAL = AVG_unlucky_ACTUAL / s;
+							AVG_objective_actual = AVG_objective_actual / s;
 
 							AVG_TOURNEY_greedy_nconf = AVG_TOURNEY_greedy_nconf / s;
 							AVG_TOURNEY_greedy_cindex = AVG_TOURNEY_greedy_cindex / s;
@@ -1212,20 +1362,21 @@ public class Main {
 
 							TimeElapsed();
 
-							String OF_improv_cplex = df.format((1 - (cplex.getObjValue() / objective_actual)) * 100);
-							String OF_improv_greedy = df.format((1 - (objective_greedy / objective_actual)) * 100);
+							String OF_improv_cplex = df
+									.format((1 - (cplex.getObjValue() / AVG_objective_actual)) * 100);
+							String OF_improv_greedy = df.format((1 - (objective_greedy / AVG_objective_actual)) * 100);
 
-							String cindex_improv_cplex = df.format((1 - (cindex_cplex / cindex_original)) * 100);
+							String cindex_improv_cplex = df.format((1 - (cindex_cplex / AVG_cindex_ACTUAL)) * 100);
 							String AVG_cindex_improv_cplex = df
-									.format((1 - (AVG_cindex_cplex / cindex_original)) * 100);
+									.format((1 - (AVG_cindex_cplex / AVG_cindex_ACTUAL)) * 100);
 							String TOURNEY_cindex_cplex_improv = df
 									.format((1 - (TOURNEY_cindex_cplex / TOURNEY_cindex_original)) * 100);
 							String AVG_TOURNEY_cplex_cindex_improv = df
 									.format((1 - (AVG_TOURNEY_cplex_cindex / TOURNEY_cindex_original)) * 100);
 
-							String cindex_improv_greedy = df.format((1 - (cindex_greedy / cindex_original)) * 100);
+							String cindex_improv_greedy = df.format((1 - (cindex_greedy / AVG_cindex_ACTUAL)) * 100);
 							String AVG_cindex_improv_greedy = df
-									.format((1 - (AVG_cindex_greedy / cindex_original)) * 100);
+									.format((1 - (AVG_cindex_greedy / AVG_cindex_ACTUAL)) * 100);
 							String TOURNEY_cindex_greedy_improv = df
 									.format((1 - (TOURNEY_cindex_greedy / TOURNEY_cindex_original)) * 100);
 							String AVG_TOURNEY_greedy_cindex_improv = df
@@ -1321,41 +1472,46 @@ public class Main {
 							writerH.close();
 
 							csvPrinterMain.printRecord(
-									Type[Ty] + "-" + TData.getTorunament_name() + " " + TData.getTournament_year(), "", "",
-									"", "", "", "", "", "", "");
+									Type[Ty] + "-" + TData.getTorunament_name() + " " + TData.getTournament_year(), "",
+									"", "", "", "", "", "", "", "");
 
 							BufferedWriter writer = new BufferedWriter(new FileWriter(Path + "Results.csv"));
 							CSVPrinter csvPrinter = new CSVPrinter(writer,
-									CSVFormat.DEFAULT.withHeader("Name", "REAL", "CPLEX", "HEU"));
-							// csvPrinter.printRecord("n=" + n + " m=v=" + v + " k=" + k, "", "", "");
-							// total greedy iterations is GR_time
-							csvPrinter.printRecord("Time", "-", df.format(CPLEX_time) + "s", df.format(GR_time_first));
-							// csvPrinter.printRecord("LB with seeds", LB, LB, LB);
-							csvPrinter.printRecord("O.F", objective_actual,
+									CSVFormat.DEFAULT.withHeader("Name", "REAL", "AVG_SIM", "CPLEX", "HEU"));
+							csvPrinter.printRecord("Time", "-", "-", df.format(CPLEX_time) + "s",
+									df.format(GR_time_first));
+							csvPrinter.printRecord("O.F", objective_actual, AVG_objective_actual,
 									cplex.getObjValue() + " (" + OF_improv_cplex + "\\%)",
 									objective_greedy + " (" + OF_improv_greedy + "\\%)");
 							String GreedyStatus = "Feasible";
 							if (cplex.getStatus().equals("Optimal") && cplex.getObjValue() == objective_greedy)
 								GreedyStatus = "Optimal";
-							csvPrinter.printRecord("Solution status", "-", cplex.getStatus(), GreedyStatus);
+							csvPrinter.printRecord("Solution status", "-", "-", cplex.getStatus(), GreedyStatus);
 							// swaps improv is delta_Sum_gr
-							csvPrinter.printRecord("    O.F. with TL=GreedyTime", "-", CPLEX_sameTime,
+							csvPrinter.printRecord("    O.F. with TL=GreedyTime", "-", "-", CPLEX_sameTime,
 									objective_greedy);
 							csvPrinter.printRecord("Avg. Indexes | " + s + " simulations", "", "", "");
 							csvPrinter.printRecord("    Unlucky pairings", nconf_unlucky_original,
-									df.format(AVG_unlucky_cplex), df.format(AVG_unlucky_greedy));
+									df.format(AVG_unlucky_ACTUAL), df.format(AVG_unlucky_cplex),
+									df.format(AVG_unlucky_greedy));
 							csvPrinter.printRecord("    Positive costs (1st round)", nconf_original,
-									df.format(AVG_nconf_cplex), df.format(AVG_nconf_greedy));
+									df.format(AVG_nconf_ACTUAL), df.format(AVG_nconf_cplex),
+									df.format(AVG_nconf_greedy));
 							csvPrinter.printRecord("    Sum of costs (1st round)", cindex_original,
+									df.format(AVG_cindex_ACTUAL),
 									df.format(AVG_cindex_cplex) + " (" + AVG_cindex_improv_cplex + "\\%)",
 									df.format(AVG_cindex_greedy) + " (" + AVG_cindex_improv_greedy + "\\%)");
-							csvPrinter.printRecord("    Positive costs (tournament)", TOURNEY_nconf_original,
-									df.format(AVG_TOURNEY_cplex_nconf), df.format(AVG_TOURNEY_greedy_nconf));
-							csvPrinter.printRecord("    Sum of costs (tournament)", TOURNEY_cindex_original,
-									df.format(AVG_TOURNEY_cplex_cindex) + " (" + AVG_TOURNEY_cplex_cindex_improv
-											+ "\\%)",
-									df.format(AVG_TOURNEY_greedy_cindex) + " (" + AVG_TOURNEY_greedy_cindex_improv
-											+ "\\%)");
+							/*
+							 * 
+							 * csvPrinter.printRecord("    Positive costs (tournament)",
+							 * TOURNEY_nconf_original, df.format(AVG_TOURNEY_cplex_nconf),
+							 * df.format(AVG_TOURNEY_greedy_nconf));
+							 * csvPrinter.printRecord("    Sum of costs (tournament)",
+							 * TOURNEY_cindex_original, df.format(AVG_TOURNEY_cplex_cindex) + " (" +
+							 * AVG_TOURNEY_cplex_cindex_improv + "\\%)",
+							 * df.format(AVG_TOURNEY_greedy_cindex) + " (" +
+							 * AVG_TOURNEY_greedy_cindex_improv + "\\%)");
+							 */
 							csvPrinter.printRecord("Unlucky information", "", "", "");
 							csvPrinter.printRecord("    Played previous 4 Slams", misfortune_map.size(),
 									misfortune_map.size(), misfortune_map.size());
@@ -1363,44 +1519,43 @@ public class Main {
 								csvPrinter.printRecord("     Paired with a seed " + i + " times", misfortune_count[i],
 										misfortune_count[i], misfortune_count[i]);
 
-							csvPrinterMain.printRecord("REAL", "-", df.format(objective_actual), "Feasible", "-",
+							csvPrinterMain.printRecord("REAL", "-", df.format(objective_actual), 
+									"","",
+									
+									"Feasible", "-",
 									df.format(nconf_unlucky_original), df.format(nconf_original),
-									df.format(cindex_original), "-","-","-",df.format(TOURNEY_nconf_original),
+									df.format(cindex_original), "-", "-", "-", df.format(TOURNEY_nconf_original),
 									df.format(TOURNEY_cindex_original));
+							csvPrinterMain.printRecord("REAL100", "-",
+									df.format(AVG_objective_actual) + "(" + BEST_objective_actual + " - "
+											+ WORST_objective_actual + ")",
+											df.format(AVG_unlucky_ACTUAL) + "("+BEST_unlucky_actual+" - "+WORST_unlucky_actual+")",
+											df.format(AVG_unlucky_ACTUAL+AVG_nconf_ACTUAL)+ "("+BEST_nconf_actual+" - "+WORST_nconf_actual+")",	
+										
+									"-", df.format(AVG_objective_actual), df.format(AVG_unlucky_ACTUAL),
+									df.format(AVG_nconf_ACTUAL), df.format(AVG_cindex_ACTUAL), "-", "-", "-", "-", "-");
 							csvPrinterMain.printRecord("CPLEX", df.format(CPLEX_time),
-									df.format(cplex.getObjValue()) + " (" + OF_improv_cplex + "%)", cplex.getStatus(),
+									df.format(cplex.getObjValue()),
+									df.format(AVG_unlucky_cplex) + "("+BEST_unlucky_cplex+" - "+WORST_unlucky_cplex+")",
+									df.format(AVG_unlucky_cplex+AVG_nconf_cplex)+ "("+BEST_nconf_cplex+" - "+WORST_nconf_cplex+")",	
+									
+									cplex.getStatus(),
 									df.format(CPLEX_sameTime), df.format(AVG_unlucky_cplex), df.format(AVG_nconf_cplex),
-									df.format(AVG_cindex_cplex) + " (" + AVG_cindex_improv_cplex + "%)", "-","-","-",
+									df.format(AVG_cindex_cplex) + " (" + AVG_cindex_improv_cplex + "%)", "-", "-", "-",
 									df.format(AVG_TOURNEY_cplex_nconf), df.format(AVG_TOURNEY_cplex_cindex) + " ("
 											+ AVG_TOURNEY_cplex_cindex_improv + "%)");
 							csvPrinterMain.printRecord("HEU", df.format(GR_time_first),
-									df.format(objective_greedy) + " (" + OF_improv_greedy + "%)", GreedyStatus,
-									df.format(objective_greedy), df.format(AVG_unlucky_greedy),
+									df.format(objective_greedy) + " (" + best_obj_greedy +" - "+worst_obj_greedy + ")",
+									df.format(AVG_unlucky_greedy) + "("+BEST_unlucky_greedy+" - "+WORST_unlucky_greedy+")",
+									df.format(AVG_unlucky_greedy+AVG_nconf_greedy)+ "("+BEST_nconf_greedy+" - "+WORST_nconf_greedy+")",	
+									GreedyStatus, df.format(objective_greedy), df.format(AVG_unlucky_greedy),
 									df.format(AVG_nconf_greedy),
 									df.format(AVG_cindex_greedy) + " (" + AVG_cindex_improv_greedy + "%)",
-									df.format(number_iter_ls) +"("+df.format(average_successful_ls)+")",
-									df.format(average_delta_ls),
-									df.format(worst_obj_greedy),
+									df.format(number_iter_ls) + "(" + df.format(average_successful_ls) + ")",
+									df.format(average_delta_ls), df.format(worst_obj_greedy),
 									df.format(AVG_TOURNEY_greedy_nconf), df.format(AVG_TOURNEY_greedy_cindex) + " ("
 											+ AVG_TOURNEY_greedy_cindex_improv + "%)");
 							csvPrinterMain.flush();
-
-							/*
-							 * csvPrinter.printRecord("Last simulation indexes", "", "", "");
-							 * csvPrinter.printRecord("Number of conflicts in the 1st round",
-							 * nconf_original, nconf_cplex, nconf_greedy);
-							 * csvPrinter.printRecord("Measure of conflicts in the 1st round",
-							 * cindex_original, df.format(cindex_cplex) + " (" + cindex_improv_cplex + "%)",
-							 * df.format(cindex_greedy) + " (" + cindex_improv_greedy + "%)");
-							 * 
-							 * csvPrinter.printRecord("Number of conflicts in the tournament",
-							 * TOURNEY_nconf_original, df.format(TOURNEY_nconf_cplex),
-							 * df.format(TOURNEY_nconf_greedy));
-							 * csvPrinter.printRecord("Measure of conflicts in the tournament",
-							 * TOURNEY_cindex_original, df.format(TOURNEY_cindex_cplex) + " (" +
-							 * TOURNEY_cindex_cplex_improv + "%)", df.format(TOURNEY_cindex_greedy) + " (" +
-							 * TOURNEY_cindex_greedy_improv + "%)");
-							 */
 
 							csvPrinter.flush();
 							csvPrinter.close();
@@ -1421,8 +1576,7 @@ public class Main {
 			}
 			// End of the season
 			// Try to do random draws to get unlucky players at the end of the season
-			
-			
+
 		}
 		csvPrinterMain.close();
 		System.out.println("Total time elapsed:" + (System.nanoTime() - Main) / 1000000000F + "s");
