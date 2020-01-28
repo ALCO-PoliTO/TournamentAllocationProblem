@@ -4,7 +4,7 @@ Pre-print available [on arXiv](https://arxiv.org/abs/1901.05387).
 
 [The interactive graph visualizer](https://gdragotto.github.io/TournamentAllocationProblem/#) for the 2017 Grand Slams tournaments helps exploring the data visually.
 
-This repository is maintained by ALCO@Politecnico di Torino.
+This repository is maintained by [Gabriele Dragotto](http://dragotto.net) and ALCO@Politecnico di Torino.
 
 This software uses [IBM CPLEX](https://developer.ibm.com/academic/). Scholars are entitled to obtain a free license via the IBM Academic Initiative.
 
