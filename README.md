@@ -1,4 +1,5 @@
 # The Tournament Allocation Problem
+Official article available [here](https://link.springer.com/article/10.1007/s10479-020-03517-8).
 Pre-print available [on arXiv](https://arxiv.org/abs/1901.05387).
 
 This repository is maintained by ALCO@Politecnico di Torino.
